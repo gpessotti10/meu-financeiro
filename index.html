@@ -48,9 +48,9 @@
                     if (salvo) return JSON.parse(salvo);
                 } catch (err) {}
                 return [
-                    { id: 1, descricao: 'Salário', valor: 5000, tipo: 'receita', categoria: 'Salário', data: '2026-11-05', status: 'pago', recorrente: true },
-                    { id: 2, descricao: 'Aluguel', valor: 1800, tipo: 'despesa', categoria: 'Moradia', data: '2026-11-10', status: 'pendente', recorrente: true },
-                    { id: 3, descricao: 'Supermercado', valor: 650, tipo: 'despesa', categoria: 'Alimentação', data: '2026-11-12', status: 'pago', recorrente: false }
+                    { id: 1, descricao: 'Salário', valor: 5000, tipo: 'receita', categoria: 'Salário', data: '2026-10-05', status: 'pago', recorrente: true },
+                    { id: 2, descricao: 'Aluguel', valor: 1800, tipo: 'despesa', categoria: 'Moradia', data: '2026-10-10', status: 'pendente', recorrente: true },
+                    { id: 3, descricao: 'Supermercado', valor: 650, tipo: 'despesa', categoria: 'Alimentação', data: '2026-10-12', status: 'pago', recorrente: false }
                 ];
             });
 
@@ -60,6 +60,49 @@
 
             const formatarMoeda = (val) => {
                 return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+            };
+
+            // Exporta no formato amigável brasileiro DD/MM/AAAA
+            const formatarDataParaExcel = (dataStr) => {
+                if (!dataStr) return '';
+                // Se já estiver em AAAA-MM-DD
+                if (dataStr.includes('-')) {
+                    const partes = dataStr.split('-');
+                    if (partes.length === 3) {
+                        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+                    }
+                }
+                return dataStr;
+            };
+
+            // Converte inteligentemente qualquer formato que venha do Excel para AAAA-MM-DD
+            const converterDataDoExcel = (dataInput) => {
+                if (!dataInput) return '2026-01-01';
+                
+                // Se o Excel passou a data como número serial do Excel
+                if (typeof dataInput === 'number') {
+                    const dataJs = new Date(Math.round((dataInput - 25569) * 86400 * 1000));
+                    const ano = dataJs.getUTCFullYear();
+                    const mes = String(dataJs.getUTCMonth() + 1).padStart(2, '0');
+                    const dia = String(dataJs.getUTCDate()).padStart(2, '0');
+                    return `${ano}-${mes}-${dia}`;
+                }
+
+                let str = String(dataInput).trim();
+                
+                // Se veio no formato antigo americano (AAAA-MM-DD)
+                if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                    return str;
+                }
+                
+                // Se veio no formato brasileiro (DD/MM/AAAA)
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+                    const partes = str.split('/');
+                    return `${partes[2]}-${partes[1]}-${partes[0]}`;
+                }
+
+                // Fallback de segurança caso venha com barras invertidas ou formato parcial
+                return str;
             };
 
             const handleAutenticacao = (ev) => {
@@ -255,11 +298,10 @@
                 setEditandoItem(null);
             };
 
-            // Voltar ao padrão original (AAAA-MM-DD) para compatibilidade perfeita com os backups
             const exportarExcel = () => {
                 const dadosParaPlanilha = lancamentos.map(item => ({
                     ID: item.id,
-                    Data: item.data,
+                    Data: formatarDataParaExcel(item.data),
                     Tipo: item.tipo,
                     Categoria: item.categoria,
                     Descrição: item.descricao,
@@ -294,13 +336,13 @@
 
                         let novosImportados = jsonDados.map((row, i) => ({
                             id: row.ID || (Date.now() + i),
-                            data: String(row.Data || '2026-11-01'),
+                            data: converterDataDoExcel(row.Data || '2026-01-01'),
                             tipo: String(row.Tipo || 'despesa').toLowerCase(),
                             categoria: String(row.Categoria || 'Outros'),
-                            descricao: String(row.Descrição || row.Descricao || row.descricao || 'Sem descrição'),
-                            valor: parseFloat(row.Valor || row.valor) || 0,
-                            status: String(row.Status || row.status || 'pendente').toLowerCase(),
-                            recorrente: String(row.Recorrente || row.recorrente || '').toLowerCase() === 'sim' || row.Recorrente === true
+                            descricao: String(row.Descrição || row.Descricao || 'Sem descrição'),
+                            valor: parseFloat(row.Valor) || 0,
+                            status: String(row.Status || 'pendente').toLowerCase(),
+                            recorrente: String(row.Recorrente || '').toLowerCase() === 'sim' || row.Recorrente === true
                         }));
 
                         if (confirm(`Deseja importar/restaurar ${novosImportados.length} lançamentos do Excel?`)) {
@@ -308,7 +350,7 @@
                             alert('Dados importados com sucesso!');
                         }
                     } catch (err) {
-                        alert('Erro ao processar o arquivo do Excel. Verifique se as colunas estão corretas.');
+                        alert('Erro ao processar o arquivo do Excel.');
                     }
                 };
                 reader.readAsArrayBuffer(arquivo);
