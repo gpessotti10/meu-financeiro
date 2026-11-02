@@ -62,10 +62,15 @@
                 return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
             };
 
-            // Exporta no formato amigável brasileiro DD/MM/AAAA
+            const formatarMoedaCompacta = (val) => {
+                if (val >= 1000) {
+                    return `R$ ${(val / 1000).toFixed(1).replace('.', ',')}k`;
+                }
+                return `R$ ${Math.round(val)}`;
+            };
+
             const formatarDataParaExcel = (dataStr) => {
                 if (!dataStr) return '';
-                // Se já estiver em AAAA-MM-DD
                 if (dataStr.includes('-')) {
                     const partes = dataStr.split('-');
                     if (partes.length === 3) {
@@ -75,11 +80,8 @@
                 return dataStr;
             };
 
-            // Converte inteligentemente qualquer formato que venha do Excel para AAAA-MM-DD
             const converterDataDoExcel = (dataInput) => {
                 if (!dataInput) return '2026-01-01';
-                
-                // Se o Excel passou a data como número serial do Excel
                 if (typeof dataInput === 'number') {
                     const dataJs = new Date(Math.round((dataInput - 25569) * 86400 * 1000));
                     const ano = dataJs.getUTCFullYear();
@@ -89,19 +91,11 @@
                 }
 
                 let str = String(dataInput).trim();
-                
-                // Se veio no formato antigo americano (AAAA-MM-DD)
-                if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-                    return str;
-                }
-                
-                // Se veio no formato brasileiro (DD/MM/AAAA)
+                if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
                 if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
                     const partes = str.split('/');
                     return `${partes[2]}-${partes[1]}-${partes[0]}`;
                 }
-
-                // Fallback de segurança caso venha com barras invertidas ou formato parcial
                 return str;
             };
 
@@ -159,9 +153,7 @@
             const disponivelFim = recebidoPagoEfetivo + receitasPendentes - contasPendentes;
 
             const lancamentosAnaliticoFiltrados = lancamentosDoMes.filter(item => {
-                if (filtroStatus !== 'todos' && item.status !== filtroStatus) {
-                    return false;
-                }
+                if (filtroStatus !== 'todos' && item.status !== filtroStatus) return false;
                 if (termoBusca.trim()) {
                     const busca = termoBusca.toLowerCase();
                     const desc = (item.descricao || '').toLowerCase();
@@ -254,41 +246,23 @@
                 if (editandoItem.recorrente && modoEdicao === 'todos') {
                     setLancamentos(lancamentos.map(item => {
                         if (item.recorrente && (item.descricao === descricaoAntiga || item.descricao === novaDesc)) {
-                            return Object.assign({}, item, {
-                                descricao: novaDesc,
-                                valor: novoVal,
-                                tipo: novoTp,
-                                categoria: novoCat
-                            });
+                            return Object.assign({}, item, { descricao: novaDesc, valor: novoVal, tipo: novoTp, categoria: novoCat });
                         }
                         return item;
                     }));
                     alert('Toda a série de recorrências foi atualizada!');
-                } 
-                else if (editandoItem.recorrente && modoEdicao === 'futuros') {
+                } else if (editandoItem.recorrente && modoEdicao === 'futuros') {
                     setLancamentos(lancamentos.map(item => {
                         if (item.recorrente && (item.descricao === descricaoAntiga || item.descricao === novaDesc) && item.data >= dataReferencia) {
-                            return Object.assign({}, item, {
-                                descricao: novaDesc,
-                                valor: novoVal,
-                                tipo: novoTp,
-                                categoria: novoCat
-                            });
+                            return Object.assign({}, item, { descricao: novaDesc, valor: novoVal, tipo: novoTp, categoria: novoCat });
                         }
                         return item;
                     }));
                     alert('Lançamentos atualizados a partir deste mês em diante!');
-                } 
-                else {
+                } else {
                     setLancamentos(lancamentos.map(item => {
                         if (item.id === editandoItem.id) {
-                            return Object.assign({}, item, {
-                                descricao: editDescricao,
-                                valor: parseFloat(editValor),
-                                tipo: editTipo,
-                                categoria: editCategoria,
-                                data: editData
-                            });
+                            return Object.assign({}, item, { descricao: editDescricao, valor: parseFloat(editValor), tipo: editTipo, categoria: editCategoria, data: editData });
                         }
                         return item;
                     }));
@@ -477,19 +451,22 @@
             if (!autenticado) {
                 return e('div', { className: 'max-w-md mx-auto bg-white min-h-screen p-6 flex flex-col justify-center items-center shadow-lg' },
                     e('div', { className: 'w-full max-w-sm bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4 text-center' },
+                        e('div', { className: 'w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl mx-auto flex items-center justify-center text-xl shadow-inner' }, '🔐'),
                         e('h2', { className: 'text-xl font-bold text-blue-600' }, 'Meu Financeiro'),
                         e('p', { className: 'text-xs text-gray-500' }, !senhaSalva ? 'Defina uma senha de acesso:' : 'Digite sua senha para desbloquear:'),
                         e('form', { onSubmit: handleAutenticacao, className: 'space-y-3' },
                             e('input', {
                                 type: 'password',
-                                placeholder: 'Digite a senha',
+                                placeholder: '••••••••',
                                 value: senhaDigitada,
                                 onChange: (ev) => setSenhaDigitada(ev.target.value),
-                                className: 'w-full p-3 border rounded-xl text-center text-lg tracking-widest',
+                                className: 'w-full p-3 border rounded-xl text-center text-lg tracking-widest bg-white outline-none focus:border-blue-500',
                                 required: true,
                                 autoFocus: true
                             }),
-                            e('button', { type: 'submit', className: 'w-full bg-blue-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-blue-700' }, !senhaSalva ? 'Criar Senha e Entrar' : 'Desbloquear')
+                            e('button', { type: 'submit', className: 'w-full bg-blue-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-blue-700 shadow transition flex items-center justify-center gap-2' },
+                                '✨ ', !senhaSalva ? 'Criar Senha e Entrar' : 'Desbloquear'
+                            )
                         ),
                         senhaSalva && e('button', { onClick: resetarApp, className: 'text-[11px] text-rose-500 hover:underline pt-2 block mx-auto' }, 'Esqueci a senha / Resetar App')
                     )
@@ -497,49 +474,61 @@
             }
 
             return e('div', { className: 'max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col justify-between pb-20 relative' },
-                e('header', { className: 'bg-blue-600 text-white p-4 sticky top-0 z-10 shadow' },
-                    e('div', { className: 'flex justify-between items-center mb-2' },
-                        e('h1', { className: 'text-lg font-bold' }, 'Meu Financeiro'),
+                e('header', { className: 'bg-blue-600 text-white p-4 sticky top-0 z-10 shadow-md' },
+                    e('div', { className: 'flex justify-between items-center mb-1' },
+                        e('div', { className: 'flex items-center gap-2' },
+                            e('span', { className: 'text-lg' }, '📊'),
+                            e('h1', { className: 'text-lg font-bold' }, 'Meu Financeiro')
+                        ),
                         e('div', { className: 'flex items-center gap-2' },
                             e('input', {
                                 type: 'month',
                                 value: mesAtual,
                                 onChange: (ev) => setMesAtual(ev.target.value),
-                                className: 'bg-blue-700 text-white px-2 py-1 rounded text-sm border border-blue-500'
+                                className: 'bg-blue-700 text-white px-2 py-1 rounded text-sm border border-blue-500 outline-none'
                             }),
-                            e('button', { onClick: () => setAutenticado(false), className: 'text-xs bg-blue-700 hover:bg-blue-800 p-1.5 rounded', title: 'Bloquear App' }, '🔒')
+                            e('button', { onClick: () => setAutenticado(false), className: 'text-xs bg-blue-700 hover:bg-blue-800 p-1.5 rounded transition', title: 'Bloquear App' }, '🔒')
                         )
                     )
                 ),
-                e('main', { className: 'p-4 flex-1' },
+                e('main', { className: 'p-4 flex-1 space-y-4' },
                     abaAtiva === 'dashboard' && e('div', { className: 'space-y-4' },
                         e('div', { className: 'grid grid-cols-1 gap-3' },
-                            e('div', { className: 'bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm' },
-                                e('p', { className: 'text-xs text-blue-600 font-semibold uppercase' }, 'Receitas (Mês Atual)'),
-                                e('p', { className: 'text-2xl font-bold text-blue-700' }, formatarMoeda(totalReceitasMes))
+                            e('div', { className: 'bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm flex items-center justify-between' },
+                                e('div', null,
+                                    e('p', { className: 'text-xs text-blue-600 font-semibold uppercase flex items-center gap-1.5' }, '📥 Receitas (Mês)'),
+                                    e('p', { className: 'text-2xl font-bold text-blue-700 mt-0.5' }, formatarMoeda(totalReceitasMes))
+                                ),
+                                e('span', { className: 'text-2xl opacity-80' }, '💰')
                             ),
-                            e('div', { className: 'bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm' },
-                                e('p', { className: 'text-xs text-amber-600 font-semibold uppercase' }, 'Contas Pendentes'),
-                                e('p', { className: 'text-2xl font-bold text-amber-700' }, formatarMoeda(contasPendentes))
+                            e('div', { className: 'bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm flex items-center justify-between' },
+                                e('div', null,
+                                    e('p', { className: 'text-xs text-amber-600 font-semibold uppercase flex items-center gap-1.5' }, '⏳ Contas Pendentes'),
+                                    e('p', { className: 'text-2xl font-bold text-amber-700 mt-0.5' }, formatarMoeda(contasPendentes))
+                                ),
+                                e('span', { className: 'text-2xl opacity-80' }, '⏰')
                             ),
-                            e('div', { className: `border p-4 rounded-xl shadow-sm ${disponivelFim >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}` },
-                                e('p', { className: `text-xs font-semibold uppercase ${disponivelFim >= 0 ? 'text-emerald-600' : 'text-rose-600'}` }, 'Disponível após pagar tudo (Projetado)'),
-                                e('p', { className: `text-2xl font-bold ${disponivelFim >= 0 ? 'text-emerald-700' : 'text-rose-700'}` }, formatarMoeda(disponivelFim))
+                            e('div', { className: `border p-4 rounded-xl shadow-sm flex items-center justify-between ${disponivelFim >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}` },
+                                e('div', null,
+                                    e('p', { className: `text-xs font-semibold uppercase flex items-center gap-1.5 ${disponivelFim >= 0 ? 'text-emerald-600' : 'text-rose-600'}` }, '💡 Disponível (Projetado)'),
+                                    e('p', { className: `text-2xl font-bold mt-0.5 ${disponivelFim >= 0 ? 'text-emerald-700' : 'text-rose-700'}` }, formatarMoeda(disponivelFim))
+                                ),
+                                e('span', { className: 'text-2xl opacity-80' }, disponivelFim >= 0 ? '🎯' : '⚠️')
                             )
                         ),
                         e('div', { className: 'bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-2' },
-                            e('h3', { className: 'text-xs font-bold text-gray-700 uppercase text-center' }, `Despesas por Categoria (${mesAtual})`),
+                            e('h3', { className: 'text-xs font-bold text-gray-700 uppercase text-center flex items-center justify-center gap-1.5' }, '📈 Despesas por Categoria', `(${mesAtual})`),
                             renderizarGraficoPizzaCircular(lancamentosDoMes, 'despesa')
                         ),
-                        e('div', { className: 'bg-gray-50 p-4 rounded-xl border border-gray-200' },
-                            e('h3', { className: 'text-sm font-bold text-gray-700 mb-3' }, 'Novo Lançamento'),
+                        e('div', { className: 'bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3' },
+                            e('h3', { className: 'text-sm font-bold text-gray-700 flex items-center gap-1.5' }, '➕ Novo Lançamento'),
                             e('form', { onSubmit: adicionarLancamento, className: 'space-y-3' },
                                 e('input', {
                                     type: 'text',
                                     placeholder: 'Descrição (ex: Supermercado)',
                                     value: novaDescricao,
                                     onChange: (ev) => setNovaDescricao(ev.target.value),
-                                    className: 'w-full p-2 border rounded text-sm',
+                                    className: 'w-full p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500',
                                     required: true
                                 }),
                                 e('div', { className: 'grid grid-cols-2 gap-2' },
@@ -549,13 +538,13 @@
                                         placeholder: 'Valor R$',
                                         value: novoValor,
                                         onChange: (ev) => setNovoValor(ev.target.value),
-                                        className: 'p-2 border rounded text-sm',
+                                        className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500',
                                         required: true
                                     }),
                                     e('select', {
                                         value: novoTipo,
                                         onChange: (ev) => setNovoTipo(ev.target.value),
-                                        className: 'p-2 border rounded text-sm bg-white'
+                                        className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500'
                                     },
                                         e('option', { value: 'despesa' }, 'Despesa'),
                                         e('option', { value: 'receita' }, 'Receita')
@@ -565,7 +554,7 @@
                                     e('select', {
                                         value: novaCategoria,
                                         onChange: (ev) => setNovaCategoria(ev.target.value),
-                                        className: 'p-2 border rounded text-sm bg-white'
+                                        className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500'
                                     },
                                         LISTA_CATEGORIAS.map(cat => e('option', { key: cat, value: cat }, cat))
                                     ),
@@ -573,10 +562,10 @@
                                         type: 'date',
                                         value: novaData,
                                         onChange: (ev) => setNovaData(ev.target.value),
-                                        className: 'p-2 border rounded text-sm'
+                                        className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500'
                                     })
                                 ),
-                                e('div', { className: 'flex items-center gap-2' },
+                                e('div', { className: 'flex items-center gap-2 pt-1' },
                                     e('input', {
                                         type: 'checkbox',
                                         id: 'recorrente',
@@ -584,27 +573,27 @@
                                         onChange: (ev) => setNovoRecorrente(ev.target.checked),
                                         className: 'w-4 h-4 text-blue-600 rounded'
                                     }),
-                                    e('label', { htmlFor: 'recorrente', className: 'text-xs text-gray-600' }, 'Repetir todo mês (Recorrente)')
+                                    e('label', { htmlFor: 'recorrente', className: 'text-xs text-gray-600 font-medium' }, '🔁 Repetir todo mês (Recorrente)')
                                 ),
-                                e('button', { type: 'submit', className: 'w-full bg-blue-600 text-white py-2 rounded font-semibold text-sm hover:bg-blue-700' }, 'Adicionar')
+                                e('button', { type: 'submit', className: 'w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-700 transition shadow-sm' }, '💾 Salvar Lançamento')
                             )
                         ),
-                        e('div', { className: 'bg-gray-100 p-3 rounded-xl border border-gray-200 text-center space-y-2' },
-                            e('p', { className: 'text-xs font-semibold text-gray-600' }, 'Backup & Lote (Excel .xlsx)'),
+                        e('div', { className: 'bg-gray-100 p-3.5 rounded-xl border border-gray-200 text-center space-y-2' },
+                            e('p', { className: 'text-xs font-semibold text-gray-700 flex items-center justify-center gap-1.5' }, '📂 Backup e Segurança (Excel .xlsx)'),
                             e('div', { className: 'flex gap-2' },
-                                e('button', { onClick: exportarExcel, className: 'flex-1 bg-emerald-600 text-white py-2 rounded text-xs font-semibold hover:bg-emerald-700' }, 'Baixar Excel (.xlsx)'),
-                                e('label', { className: 'flex-1 bg-blue-600 text-white py-2 rounded text-xs font-semibold hover:bg-blue-700 cursor-pointer text-center' },
-                                    'Subir Lote / Restaurar',
+                                e('button', { onClick: exportarExcel, className: 'flex-1 bg-emerald-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition flex items-center justify-center gap-1' }, '📥 Baixar Excel'),
+                                e('label', { className: 'flex-1 bg-blue-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 cursor-pointer text-center transition flex items-center justify-center gap-1' },
+                                    '📤 Restaurar',
                                     e('input', { type: 'file', accept: '.xlsx, .xls', onChange: importarExcel, className: 'hidden' })
                                 )
                             ),
-                            e('p', { className: 'text-[10px] text-gray-400' }, 'Compatível com OneDrive e Microsoft Excel.')
+                            e('p', { className: 'text-[10px] text-gray-400' }, 'Compatível com OneDrive, Google Drive e Excel.')
                         )
                     ),
                     abaAtiva === 'planilha' && e('div', { className: 'space-y-3' },
                         e('div', { className: 'flex justify-between items-center' },
-                            e('h3', { className: 'text-sm font-bold text-gray-700' }, `Visão Analítico - ${mesAtual}`),
-                            e('button', { onClick: duplicarRecorrenciaProximoAno, className: 'bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-sm' }, '🔄 Duplicar Recorrência p/ Próximo Ano')
+                            e('h3', { className: 'text-sm font-bold text-gray-700 flex items-center gap-1.5' }, '📋 Visão Analítica', `(${mesAtual})`),
+                            e('button', { onClick: duplicarRecorrenciaProximoAno, className: 'bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-sm transition' }, '🔄 Duplicar p/ Ano Seguinte')
                         ),
                         e('div', { className: 'space-y-2' },
                             e('input', {
@@ -612,68 +601,124 @@
                                 placeholder: '🔍 Pesquisar por descrição ou categoria...',
                                 value: termoBusca,
                                 onChange: (ev) => setTermoBusca(ev.target.value),
-                                className: 'w-full p-2 border border-gray-300 rounded-lg text-xs bg-gray-50 focus:bg-white'
+                                className: 'w-full p-2.5 border border-gray-300 rounded-lg text-xs bg-gray-50 focus:bg-white outline-none'
                             }),
                             e('div', { className: 'grid grid-cols-3 gap-1.5' },
                                 e('button', {
                                     onClick: () => setFiltroStatus('todos'),
-                                    className: `py-1.5 text-xs font-semibold rounded-lg border ${filtroStatus === 'todos' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`
-                                }, 'Todos'),
+                                    className: `py-1.5 text-xs font-semibold rounded-lg border transition ${filtroStatus === 'todos' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200'}`
+                                }, '🌐 Todos'),
                                 e('button', {
                                     onClick: () => setFiltroStatus('pendente'),
-                                    className: `py-1.5 text-xs font-semibold rounded-lg border ${filtroStatus === 'pendente' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-600 border-gray-200'}`
-                                }, '⏳ Não Pagas'),
+                                    className: `py-1.5 text-xs font-semibold rounded-lg border transition ${filtroStatus === 'pendente' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200'}`
+                                }, '⏳ Pendentes'),
                                 e('button', {
                                     onClick: () => setFiltroStatus('pago'),
-                                    className: `py-1.5 text-xs font-semibold rounded-lg border ${filtroStatus === 'pago' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200'}`
+                                    className: `py-1.5 text-xs font-semibold rounded-lg border transition ${filtroStatus === 'pago' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200'}`
                                 }, '✅ Pagas')
                             )
                         ),
-                        e('div', { className: 'overflow-x-auto' },
+                        e('div', { className: 'overflow-x-auto rounded-xl border border-gray-200 shadow-sm' },
                             e('table', { className: 'w-full text-left text-xs border-collapse' },
                                 e('thead', null,
-                                    e('tr', { className: 'bg-gray-100 border-b' },
-                                        e('th', { className: 'p-2' }, 'Pago'),
-                                        e('th', { className: 'p-2' }, 'Descrição'),
-                                        e('th', { className: 'p-2' }, 'Valor'),
-                                        e('th', { className: 'p-2 text-center' }, 'Ações')
+                                    e('tr', { className: 'bg-gray-100 border-b text-gray-600' },
+                                        e('th', { className: 'p-2.5' }, 'Pago'),
+                                        e('th', { className: 'p-2.5' }, 'Descrição'),
+                                        e('th', { className: 'p-2.5' }, 'Valor'),
+                                        e('th', { className: 'p-2.5 text-center' }, 'Ações')
                                     )
                                 ),
                                 e('tbody', null,
                                     lancamentosAnaliticoFiltrados.map(item =>
-                                        e('tr', { key: item.id, className: 'border-b hover:bg-gray-50' },
-                                            e('td', { className: 'p-2' },
+                                        e('tr', { key: item.id, className: 'border-b hover:bg-gray-50 transition' },
+                                            e('td', { className: 'p-2.5' },
                                                 item.tipo === 'despesa' ? e('input', {
                                                     type: 'checkbox',
                                                     checked: item.status === 'pago',
                                                     onChange: () => alternarStatus(item.id),
-                                                    className: 'w-4 h-4 cursor-pointer',
+                                                    className: 'w-4 h-4 cursor-pointer text-blue-600 rounded',
                                                     title: 'Marcar como pago'
                                                 }) : e('span', { className: 'text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold' }, 'REC')
                                             ),
-                                            e('td', { className: `p-2 ${item.tipo === 'despesa' && item.status === 'pago' ? 'line-through text-gray-400' : ''}` },
+                                            e('td', { className: `p-2.5 ${item.tipo === 'despesa' && item.status === 'pago' ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}` },
                                                 item.descricao,
                                                 e('div', { className: 'text-[10px] text-gray-400' }, `${item.categoria} • ${item.data} ${item.recorrente ? '🔁' : ''}`)
                                             ),
-                                            e('td', { className: `p-2 font-semibold ${item.tipo === 'receita' ? 'text-emerald-600' : 'text-rose-600'}` },
+                                            e('td', { className: `p-2.5 font-bold ${item.tipo === 'receita' ? 'text-emerald-600' : 'text-rose-600'}` },
                                                 (item.tipo === 'receita' ? '+' : '-') + formatarMoeda(item.valor)
                                             ),
-                                            e('td', { className: 'p-2 text-center flex justify-center gap-1' },
-                                                e('button', { onClick: () => iniciarEdicao(item), className: 'text-blue-500 hover:text-blue-700 font-bold p-1', title: 'Editar' }, '✏️'),
-                                                e('button', { onClick: () => excluirLancamento(item.id), className: 'text-rose-500 hover:text-rose-700 font-bold p-1', title: 'Excluir' }, '🗑️')
+                                            e('td', { className: 'p-2.5 text-center flex justify-center gap-1' },
+                                                e('button', { onClick: () => iniciarEdicao(item), className: 'text-blue-500 hover:text-blue-700 p-1 rounded transition', title: 'Editar' }, '✏️'),
+                                                e('button', { onClick: () => excluirLancamento(item.id), className: 'text-rose-500 hover:text-rose-700 p-1 rounded transition', title: 'Excluir' }, '🗑️')
                                             )
                                         )
                                     ),
                                     lancamentosAnaliticoFiltrados.length === 0 && e('tr', null,
-                                        e('td', { colSpan: 4, className: 'text-center p-4 text-gray-400' }, 'Nenhum lançamento encontrado.')
+                                        e('td', { colSpan: 4, className: 'text-center p-6 text-gray-400' }, 'Nenhum lançamento encontrado.')
                                     )
                                 )
                             )
                         )
                     ),
                     abaAtiva === 'forecast' && e('div', { className: 'space-y-4' },
-                        e('h3', { className: 'text-sm font-bold text-gray-700' }, `Forecast Anual (${anoVigente})`),
+                        e('h3', { className: 'text-sm font-bold text-gray-700 flex items-center gap-1.5' }, '📅 Forecast Anual', `(${anoVigente})`),
                         
+                        // BLOCO: Gráfico Compacto, Simplificado e Enquadrado na Tela
+                        (() => {
+                            const mesesGrafico = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+                            
+                            const dadosGrafico = mesesGrafico.map(mesNum => {
+                                const chaveMes = `${anoVigente}-${mesNum}`;
+                                const itensMes = lancamentos.filter(i => i.data && i.data.startsWith(chaveMes));
+                                const rec = itensMes.filter(i => i.tipo === 'receita').reduce((a, b) => a + Number(b.valor), 0);
+                                const desp = itensMes.filter(i => i.tipo === 'despesa').reduce((a, b) => a + Number(b.valor), 0);
+                                return { mesStr: mesNum, rec, desp };
+                            });
+
+                            const maxGrafico = Math.max(...dadosGrafico.flatMap(d => [d.rec, d.desp]), 1);
+                            const meioGrafico = maxGrafico / 2;
+
+                            return e('div', { className: 'bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm space-y-3' },
+                                e('div', { className: 'flex justify-between items-center' },
+                                    e('h4', { className: 'text-[11px] font-bold text-gray-700 uppercase flex items-center gap-1' }, '📊 Receitas x Despesas'),
+                                    e('span', { className: 'text-[9px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium' }, `Teto: ${formatarMoedaCompacta(maxGrafico)}`)
+                                ),
+                                
+                                // Container do Gráfico enquadrado perfeitamente sem barra de rolagem
+                                e('div', { className: 'flex items-stretch gap-1.5 pt-1' },
+                                    e('div', { className: 'flex flex-col justify-between text-[9px] text-gray-400 text-right pr-1 pb-5 h-32 select-none shrink-0 font-medium' },
+                                        e('span', null, formatarMoedaCompacta(maxGrafico)),
+                                        e('span', null, formatarMoedaCompacta(meioGrafico)),
+                                        e('span', null, 'R$ 0')
+                                    ),
+                                    e('div', { className: 'flex-1 flex items-end justify-between h-32 border-b border-l border-gray-200 pb-1 px-1' },
+                                        dadosGrafico.map(d => 
+                                            e('div', { key: d.mesStr, className: 'flex flex-col items-center flex-1 mx-[1px]' },
+                                                e('div', { className: 'flex items-end w-full justify-center space-x-[1px] h-24' },
+                                                    e('div', { 
+                                                        className: 'bg-emerald-500 w-1.5 md:w-2.5 rounded-t-sm opacity-90 transition hover:opacity-100', 
+                                                        style: { height: `${(d.rec / maxGrafico) * 100}%` },
+                                                        title: `Mês ${d.mesStr} - Receitas: ${formatarMoeda(d.rec)}` 
+                                                    }),
+                                                    e('div', { 
+                                                        className: 'bg-rose-500 w-1.5 md:w-2.5 rounded-t-sm opacity-90 transition hover:opacity-100', 
+                                                        style: { height: `${(d.desp / maxGrafico) * 100}%` },
+                                                        title: `Mês ${d.mesStr} - Despesas: ${formatarMoeda(d.desp)}` 
+                                                    })
+                                                ),
+                                                e('span', { className: 'text-[9px] mt-1 text-gray-500 font-bold' }, d.mesStr)
+                                            )
+                                        )
+                                    )
+                                ),
+                                
+                                e('div', { className: 'flex justify-center space-x-5 text-[10px] text-gray-600 font-semibold pt-1' },
+                                    e('div', { className: 'flex items-center gap-1.5' }, e('span', { className: 'w-2.5 h-2.5 bg-emerald-500 rounded-full' }), 'Receitas'),
+                                    e('div', { className: 'flex items-center gap-1.5' }, e('span', { className: 'w-2.5 h-2.5 bg-rose-500 rounded-full' }), 'Despesas')
+                                )
+                            );
+                        })(),
+
                         e('div', { className: 'bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-2' },
                             e('h4', { className: 'text-xs font-bold text-gray-700 uppercase text-center' }, `Despesas por Categoria (${anoVigente})`),
                             renderizarGraficoPizzaCircular(lancamentosDoAno, 'despesa')
@@ -684,7 +729,7 @@
                             renderizarGraficoPizzaCircular(lancamentosDoAno, 'receita')
                         ),
 
-                        e('p', { className: 'text-xs text-gray-500 pt-2' }, 'Acompanhamento consolidado dos meses do ano.'),
+                        e('p', { className: 'text-xs text-gray-500 pt-1 font-medium' }, 'Acompanhamento consolidado dos meses do ano.'),
                         e('div', { className: 'space-y-2' },
                             ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(mesNum => {
                                 const chaveMes = `${anoVigente}-${mesNum}`;
@@ -693,11 +738,11 @@
                                 const desp = itensMes.filter(i => i.tipo === 'despesa').reduce((a, b) => a + Number(b.valor), 0);
                                 const saldoMes = rec - desp;
 
-                                return e('div', { key: chaveMes, className: `p-3 rounded-lg border flex justify-between items-center text-sm ${chaveMes === mesAtual ? 'border-blue-500 bg-blue-50/50' : 'bg-white'}` },
-                                    e('div', null, e('span', { className: 'font-semibold' }, chaveMes)),
+                                return e('div', { key: chaveMes, className: `p-3 rounded-xl border flex justify-between items-center text-sm transition ${chaveMes === mesAtual ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'bg-white hover:bg-gray-50'}` },
+                                    e('div', null, e('span', { className: 'font-semibold text-gray-700' }, chaveMes)),
                                     e('div', { className: 'text-right' },
                                         e('p', { className: `font-bold ${saldoMes >= 0 ? 'text-emerald-600' : 'text-rose-600'}` }, formatarMoeda(saldoMes)),
-                                        e('span', { className: 'text-[10px] text-gray-400' }, `Rec: ${formatarMoeda(rec)} | Desp: ${formatarMoeda(desp)}`)
+                                        e('span', { className: 'text-[10px] text-gray-400 font-medium' }, `Rec: ${formatarMoeda(rec)} | Desp: ${formatarMoeda(desp)}`)
                                     )
                                 );
                             })
@@ -705,8 +750,8 @@
                     )
                 ),
                 editandoItem && e('div', { className: 'absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4' },
-                    e('div', { className: 'bg-white w-full max-w-sm p-4 rounded-2xl shadow-xl space-y-3' },
-                        e('h3', { className: 'text-sm font-bold text-gray-800' }, 'Editar Lançamento'),
+                    e('div', { className: 'bg-white w-full max-w-sm p-5 rounded-2xl shadow-xl space-y-3' },
+                        e('h3', { className: 'text-sm font-bold text-gray-800 flex items-center gap-1.5' }, '✏️ Editar Lançamento'),
                         e('form', { 
                             onSubmit: (ev) => salvarEdicao(ev, 'este'),
                             className: 'space-y-3' 
@@ -715,7 +760,7 @@
                                 type: 'text',
                                 value: editDescricao,
                                 onChange: (ev) => setEditDescricao(ev.target.value),
-                                className: 'w-full p-2 border rounded text-sm',
+                                className: 'w-full p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500',
                                 required: true
                             }),
                             e('div', { className: 'grid grid-cols-2 gap-2' },
@@ -724,13 +769,13 @@
                                     step: '0.01',
                                     value: editValor,
                                     onChange: (ev) => setEditValor(ev.target.value),
-                                    className: 'p-2 border rounded text-sm',
+                                    className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500',
                                     required: true
                                 }),
                                 e('select', {
                                     value: editTipo,
                                     onChange: (ev) => setEditTipo(ev.target.value),
-                                    className: 'p-2 border rounded text-sm bg-white'
+                                    className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500'
                                 },
                                     e('option', { value: 'despesa' }, 'Despesa'),
                                     e('option', { value: 'receita' }, 'Receita')
@@ -740,7 +785,7 @@
                                 e('select', {
                                     value: editCategoria,
                                     onChange: (ev) => setEditCategoria(ev.target.value),
-                                    className: 'p-2 border rounded text-sm bg-white'
+                                    className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500'
                                 },
                                     LISTA_CATEGORIAS.map(cat => e('option', { key: cat, value: cat }, cat))
                                 ),
@@ -748,7 +793,7 @@
                                     type: 'date',
                                     value: editData,
                                     onChange: (ev) => setEditData(ev.target.value),
-                                    className: 'p-2 border rounded text-sm',
+                                    className: 'p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-blue-500',
                                     required: true
                                 })
                             ),
@@ -757,39 +802,39 @@
                                     e('button', { 
                                         type: 'button', 
                                         onClick: (ev) => salvarEdicao(ev, 'futuros'), 
-                                        className: 'w-full bg-emerald-600 text-white py-2 rounded text-xs font-semibold hover:bg-emerald-700' 
-                                    }, '📈 Atualizar Desse Mês em Diante (Aumento)'),
+                                        className: 'w-full bg-emerald-600 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-1.5' 
+                                    }, '📈 Atualizar deste mês em diante'),
                                     e('button', { 
                                         type: 'button', 
                                         onClick: (ev) => salvarEdicao(ev, 'todos'), 
-                                        className: 'w-full bg-indigo-600 text-white py-2 rounded text-xs font-semibold hover:bg-indigo-700' 
-                                    }, '🔄 Atualizar TODA a Série Recorrente'),
+                                        className: 'w-full bg-indigo-600 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center justify-center gap-1.5' 
+                                    }, '🔄 Atualizar toda a série recorrente'),
                                     e('button', { 
                                         type: 'submit', 
-                                        className: 'w-full bg-blue-600 text-white py-2 rounded text-xs font-semibold hover:bg-blue-700' 
-                                    }, 'Salvar Apenas Este Mês')
+                                        className: 'w-full bg-blue-600 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-1.5' 
+                                    }, '💾 Salvar apenas este mês')
                                 ) : e('button', { 
                                     type: 'submit', 
-                                    className: 'w-full bg-blue-600 text-white py-2 rounded text-xs font-semibold hover:bg-blue-700' 
-                                }, 'Salvar'),
+                                    className: 'w-full bg-blue-600 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-1.5' 
+                                }, '💾 Salvar alteração'),
                                 e('button', { 
                                     type: 'button', 
                                     onClick: () => setEditandoItem(null), 
-                                    className: 'w-full bg-gray-300 text-gray-700 py-2 rounded text-xs font-semibold hover:bg-gray-400' 
+                                    className: 'w-full bg-gray-200 text-gray-700 py-2.5 rounded-lg text-xs font-semibold hover:bg-gray-300 transition' 
                                 }, 'Cancelar')
                             )
                         )
                     )
                 ),
-                e('nav', { className: 'fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around p-3 shadow-lg' },
-                    e('button', { onClick: () => setAbaAtiva('dashboard'), className: `text-xs font-semibold flex flex-col items-center ${abaAtiva === 'dashboard' ? 'text-blue-600' : 'text-gray-400'}` },
-                        e('span', null, '🏠'), ' Início'
+                e('nav', { className: 'fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around p-3 shadow-lg z-20 rounded-t-xl' },
+                    e('button', { onClick: () => setAbaAtiva('dashboard'), className: `text-xs font-bold flex flex-col items-center gap-0.5 transition ${abaAtiva === 'dashboard' ? 'text-blue-600 scale-105' : 'text-gray-400 hover:text-gray-600'}` },
+                        e('span', { className: 'text-lg' }, '🏠'), 'Início'
                     ),
-                    e('button', { onClick: () => setAbaAtiva('planilha'), className: `text-xs font-semibold flex flex-col items-center ${abaAtiva === 'planilha' ? 'text-blue-600' : 'text-gray-400'}` },
-                        e('span', null, '📊'), ' Analítico'
+                    e('button', { onClick: () => setAbaAtiva('planilha'), className: `text-xs font-bold flex flex-col items-center gap-0.5 transition ${abaAtiva === 'planilha' ? 'text-blue-600 scale-105' : 'text-gray-400 hover:text-gray-600'}` },
+                        e('span', { className: 'text-lg' }, '📊'), 'Analítico'
                     ),
-                    e('button', { onClick: () => setAbaAtiva('forecast'), className: `text-xs font-semibold flex flex-col items-center ${abaAtiva === 'forecast' ? 'text-blue-600' : 'text-gray-400'}` },
-                        e('span', null, '📅'), ' Forecast'
+                    e('button', { onClick: () => setAbaAtiva('forecast'), className: `text-xs font-bold flex flex-col items-center gap-0.5 transition ${abaAtiva === 'forecast' ? 'text-blue-600 scale-105' : 'text-gray-400 hover:text-gray-600'}` },
+                        e('span', { className: 'text-lg' }, '📈'), 'Forecast'
                     )
                 )
             );
