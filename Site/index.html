@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Financeiro</title>
+    <title>Minhas Finanças</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React e ReactDOM -->
@@ -12,8 +12,8 @@
     <!-- SheetJS (xlsx) para manipulação de arquivos Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
-    <!-- Ícone PWA Personalizado -->
-    <link rel="icon" type="image/png" href="logo.png">
+    <!-- Ícone PWA e Aba do Navegador -->
+    <link rel="icon" type="image/jpeg" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -480,8 +480,21 @@
             if (!autenticado) {
                 return e('div', { className: 'max-w-md mx-auto bg-white min-h-screen p-6 flex flex-col justify-center items-center shadow-lg' },
                     e('div', { className: 'w-full max-w-sm bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4 text-center' },
-                        e('div', { className: 'w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl mx-auto flex items-center justify-center text-xl shadow-inner' }, '🔐'),
-                        e('h2', { className: 'text-xl font-bold text-blue-600' }, 'Meu Financeiro'),
+                        
+                        // Logo adicionado aqui no lugar do ícone de cadeado
+                        e('div', { className: 'w-28 h-28 mx-auto rounded-[2rem] overflow-hidden shadow-inner bg-white flex items-center justify-center' },
+                            e('img', { 
+                                src: 'logo.png', 
+                                alt: 'Logo Minhas Finanças', 
+                                className: 'w-full h-full object-cover p-1',
+                                onError: (ev) => { 
+                                    ev.target.style.display = 'none'; 
+                                    ev.target.parentNode.innerHTML = '<span class="text-4xl">🔐</span>'; 
+                                }
+                            })
+                        ),
+
+                        e('h2', { className: 'text-xl font-bold text-blue-600' }, 'Minhas Finanças'),
                         e('p', { className: 'text-xs text-gray-500' }, !senhaSalva ? 'Defina uma senha de acesso:' : 'Digite sua senha para desbloquear:'),
                         e('form', { onSubmit: handleAutenticacao, className: 'space-y-3' },
                             e('input', {
@@ -507,7 +520,7 @@
                     e('div', { className: 'flex justify-between items-center mb-1' },
                         e('div', { className: 'flex items-center gap-2' },
                             e('span', { className: 'text-lg' }, '📊'),
-                            e('h1', { className: 'text-lg font-bold' }, 'Meu Financeiro')
+                            e('h1', { className: 'text-lg font-bold' }, 'Minhas Finanças')
                         ),
                         e('div', { className: 'flex items-center gap-2' },
                             e('input', {
@@ -692,7 +705,6 @@
                     abaAtiva === 'forecast' && e('div', { className: 'space-y-4' },
                         e('h3', { className: 'text-sm font-bold text-gray-700 flex items-center gap-1.5' }, '📅 Forecast Anual', `(${anoVigente})`),
                         
-                        // BLOCO: Gráfico Compacto com Badges Limpas no Eixo X
                         (() => {
                             const mesesGrafico = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
                             
@@ -701,22 +713,7 @@
                                 const itensMes = lancamentos.filter(i => i.data && i.data.startsWith(chaveMes));
                                 const rec = itensMes.filter(i => i.tipo === 'receita').reduce((a, b) => a + Number(b.valor), 0);
                                 const desp = itensMes.filter(i => i.tipo === 'despesa').reduce((a, b) => a + Number(b.valor), 0);
-                                
-                                // Cálculo da Porcentagem do Saldo
-                                let percentualStr = '';
-                                let isPositivo = true;
-                                
-                                if (rec > 0) {
-                                    const saldo = rec - desp;
-                                    const percentual = (saldo / rec) * 100;
-                                    percentualStr = `${percentual > 0 ? '+' : ''}${percentual.toFixed(0)}%`;
-                                    isPositivo = percentual >= 0;
-                                } else if (desp > 0) {
-                                    percentualStr = '-100%';
-                                    isPositivo = false;
-                                }
-
-                                return { mesStr: mesNum, rec, desp, percentualStr, isPositivo };
+                                return { mesStr: mesNum, rec, desp };
                             });
 
                             const maxGrafico = Math.max(...dadosGrafico.flatMap(d => [d.rec, d.desp]), 1);
@@ -729,40 +726,27 @@
                                 ),
                                 
                                 e('div', { className: 'flex items-stretch gap-1.5 pt-1' },
-                                    // Eixo Y (Valores) ajustado para considerar o novo espaço do eixo X
-                                    e('div', { className: 'flex flex-col justify-between text-[9px] text-gray-400 text-right pr-1 pb-9 h-32 select-none shrink-0 font-medium' },
+                                    e('div', { className: 'flex flex-col justify-between text-[9px] text-gray-400 text-right pr-1 pb-5 h-32 select-none shrink-0 font-medium' },
                                         e('span', null, formatarMoedaCompacta(maxGrafico)),
                                         e('span', null, formatarMoedaCompacta(meioGrafico)),
                                         e('span', null, 'R$ 0')
                                     ),
-                                    // Área principal do Gráfico e Eixo X
-                                    e('div', { className: 'flex-1 flex flex-col' },
-                                        // Espaço das Barras
-                                        e('div', { className: 'flex items-end justify-between h-24 border-b border-l border-gray-200 px-0.5' },
-                                            dadosGrafico.map(d => 
-                                                e('div', { key: `bar-${d.mesStr}`, className: 'flex items-end w-full justify-center space-x-[1px] h-full mx-[1px]' },
+                                    e('div', { className: 'flex-1 flex items-end justify-between h-32 border-b border-l border-gray-200 pb-1 px-1' },
+                                        dadosGrafico.map(d => 
+                                            e('div', { key: d.mesStr, className: 'flex flex-col items-center flex-1 mx-[1px]' },
+                                                e('div', { className: 'flex items-end w-full justify-center space-x-[1px] h-24' },
                                                     e('div', { 
                                                         className: 'bg-emerald-500 w-1.5 md:w-2.5 rounded-t-sm opacity-90 transition hover:opacity-100', 
                                                         style: { height: `${(d.rec / maxGrafico) * 100}%` },
-                                                        title: `Receitas: ${formatarMoeda(d.rec)}` 
+                                                        title: `Mês ${d.mesStr} - Receitas: ${formatarMoeda(d.rec)}` 
                                                     }),
                                                     e('div', { 
                                                         className: 'bg-rose-500 w-1.5 md:w-2.5 rounded-t-sm opacity-90 transition hover:opacity-100', 
                                                         style: { height: `${(d.desp / maxGrafico) * 100}%` },
-                                                        title: `Despesas: ${formatarMoeda(d.desp)}` 
+                                                        title: `Mês ${d.mesStr} - Despesas: ${formatarMoeda(d.desp)}` 
                                                     })
-                                                )
-                                            )
-                                        ),
-                                        // Eixo X (Meses + Badges de Porcentagem)
-                                        e('div', { className: 'flex items-start justify-between h-8 pt-1 px-0.5' },
-                                            dadosGrafico.map(d => 
-                                                e('div', { key: `label-${d.mesStr}`, className: 'flex flex-col items-center flex-1 mx-[1px]' },
-                                                    e('span', { className: 'text-[9px] text-gray-500 font-bold leading-none' }, d.mesStr),
-                                                    d.percentualStr && e('span', { 
-                                                        className: `text-[7px] px-1 py-[1px] rounded mt-0.5 font-bold ${d.isPositivo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`
-                                                    }, d.percentualStr)
-                                                )
+                                                ),
+                                                e('span', { className: 'text-[9px] mt-1 text-gray-500 font-bold' }, d.mesStr)
                                             )
                                         )
                                     )
@@ -793,23 +777,9 @@
                                 const rec = itensMes.filter(i => i.tipo === 'receita').reduce((a, b) => a + Number(b.valor), 0);
                                 const desp = itensMes.filter(i => i.tipo === 'despesa').reduce((a, b) => a + Number(b.valor), 0);
                                 const saldoMes = rec - desp;
-                                
-                                let percentualStr = '';
-                                let isPositivo = true;
-                                if (rec > 0) {
-                                    const percentual = (saldoMes / rec) * 100;
-                                    percentualStr = `${percentual > 0 ? '+' : ''}${percentual.toFixed(0)}%`;
-                                    isPositivo = percentual >= 0;
-                                } else if (desp > 0) {
-                                    percentualStr = '-100%';
-                                    isPositivo = false;
-                                }
 
                                 return e('div', { key: chaveMes, className: `p-3 rounded-xl border flex justify-between items-center text-sm transition ${chaveMes === mesAtual ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'bg-white hover:bg-gray-50'}` },
-                                    e('div', { className: 'flex items-center gap-2' }, 
-                                        e('span', { className: 'font-semibold text-gray-700' }, chaveMes),
-                                        percentualStr && e('span', { className: `text-[10px] px-1.5 py-0.5 rounded font-bold ${isPositivo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}` }, percentualStr)
-                                    ),
+                                    e('div', null, e('span', { className: 'font-semibold text-gray-700' }, chaveMes)),
                                     e('div', { className: 'text-right' },
                                         e('p', { className: `font-bold ${saldoMes >= 0 ? 'text-emerald-600' : 'text-rose-600'}` }, formatarMoeda(saldoMes)),
                                         e('span', { className: 'text-[10px] text-gray-400 font-medium' }, `Rec: ${formatarMoeda(rec)} | Desp: ${formatarMoeda(desp)}`)
