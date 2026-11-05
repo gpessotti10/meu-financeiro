@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minhas Finanças</title>
+    <title>Meu Financeiro</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React e ReactDOM -->
@@ -13,8 +13,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Ícone PWA e Aba do Navegador -->
-    <link rel="icon" type="image/jpeg" href="Logo.png">
-    <link rel="apple-touch-icon" href="Logo.png">
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="apple-touch-icon" href="logo.jpg">
 </head>
 <body class="bg-gray-50 text-gray-800">
     <div id="root"></div>
@@ -46,6 +46,10 @@
             const [termoBusca, setTermoBusca] = React.useState('');
             const [filtroStatus, setFiltroStatus] = React.useState('todos');
             const [itemParaExcluir, setItemParaExcluir] = React.useState(null);
+            
+            // Novos estados para a limpeza de histórico
+            const [exibirModalLimpar, setExibirModalLimpar] = React.useState(false);
+            const [anoParaLimpar, setAnoParaLimpar] = React.useState('');
             
             const [lancamentos, setLancamentos] = React.useState(() => {
                 try {
@@ -209,6 +213,27 @@
                 }
 
                 setItemParaExcluir(null);
+            };
+
+            const confirmarLimpezaAno = (ev) => {
+                ev.preventDefault();
+                if (!anoParaLimpar || anoParaLimpar.length !== 4) {
+                    alert('Digite um ano válido com 4 dígitos.');
+                    return;
+                }
+                
+                const itensDoAno = lancamentos.filter(item => item.data && item.data.startsWith(anoParaLimpar));
+                
+                if (itensDoAno.length === 0) {
+                    alert(`Nenhum lançamento encontrado para o ano de ${anoParaLimpar}.`);
+                    return;
+                }
+
+                if (confirm(`⚠️ ATENÇÃO: Você está prestes a excluir TODOS os ${itensDoAno.length} lançamentos do ano de ${anoParaLimpar}.\n\nEssa ação NÃO pode ser desfeita. Tem certeza absoluta?`)) {
+                    setLancamentos(lancamentos.filter(item => !(item.data && item.data.startsWith(anoParaLimpar))));
+                    alert(`Histórico de ${anoParaLimpar} apagado com sucesso!`);
+                    setExibirModalLimpar(false);
+                }
             };
 
             const duplicarRecorrenciaProximoAno = () => {
@@ -481,10 +506,9 @@
                 return e('div', { className: 'max-w-md mx-auto bg-white min-h-screen p-6 flex flex-col justify-center items-center shadow-lg' },
                     e('div', { className: 'w-full max-w-sm bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4 text-center' },
                         
-                        // Logo adicionado aqui no lugar do ícone de cadeado
                         e('div', { className: 'w-28 h-28 mx-auto rounded-[2rem] overflow-hidden shadow-inner bg-white flex items-center justify-center' },
                             e('img', { 
-                                src: 'Logo.png', 
+                                src: 'logo.jpg', 
                                 alt: 'Logo Minhas Finanças', 
                                 className: 'w-full h-full object-cover p-1',
                                 onError: (ev) => { 
@@ -494,7 +518,7 @@
                             })
                         ),
 
-                        e('h2', { className: 'text-xl font-bold text-blue-600' }, 'Minhas Finanças'),
+                        e('h2', { className: 'text-xl font-bold text-blue-600' }, 'Meu Financeiro'),
                         e('p', { className: 'text-xs text-gray-500' }, !senhaSalva ? 'Defina uma senha de acesso:' : 'Digite sua senha para desbloquear:'),
                         e('form', { onSubmit: handleAutenticacao, className: 'space-y-3' },
                             e('input', {
@@ -520,7 +544,7 @@
                     e('div', { className: 'flex justify-between items-center mb-1' },
                         e('div', { className: 'flex items-center gap-2' },
                             e('span', { className: 'text-lg' }, '📊'),
-                            e('h1', { className: 'text-lg font-bold' }, 'Minhas Finanças')
+                            e('h1', { className: 'text-lg font-bold' }, 'Meu Financeiro')
                         ),
                         e('div', { className: 'flex items-center gap-2' },
                             e('input', {
@@ -622,13 +646,20 @@
                         ),
                         e('div', { className: 'bg-gray-100 p-3.5 rounded-xl border border-gray-200 text-center space-y-2' },
                             e('p', { className: 'text-xs font-semibold text-gray-700 flex items-center justify-center gap-1.5' }, '📂 Backup e Segurança (Excel .xlsx)'),
+                            
+                            // AQUI ESTÃO OS 3 BOTÕES LADO A LADO
                             e('div', { className: 'flex gap-2' },
-                                e('button', { onClick: exportarExcel, className: 'flex-1 bg-emerald-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition flex items-center justify-center gap-1' }, '📥 Baixar Excel'),
+                                e('button', { onClick: exportarExcel, className: 'flex-1 bg-emerald-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition flex items-center justify-center gap-1' }, '📥 Baixar'),
                                 e('label', { className: 'flex-1 bg-blue-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 cursor-pointer text-center transition flex items-center justify-center gap-1' },
                                     '📤 Restaurar',
                                     e('input', { type: 'file', accept: '.xlsx, .xls', onChange: importarExcel, className: 'hidden' })
-                                )
+                                ),
+                                e('button', { 
+                                    onClick: () => { setAnoParaLimpar(anoVigente); setExibirModalLimpar(true); }, 
+                                    className: 'flex-1 bg-rose-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-rose-700 transition flex items-center justify-center gap-1' 
+                                }, '🧹 Limpar')
                             ),
+                            
                             e('p', { className: 'text-[10px] text-gray-400' }, 'Compatível com OneDrive, Google Drive e Excel.')
                         )
                     ),
@@ -891,6 +922,36 @@
                                 onClick: () => setItemParaExcluir(null), 
                                 className: 'w-full bg-gray-200 text-gray-700 py-2.5 rounded-lg text-xs font-semibold hover:bg-gray-300 transition' 
                             }, 'Cancelar')
+                        )
+                    )
+                ),
+                // MODAL DE LIMPEZA DE ANO
+                exibirModalLimpar && e('div', { className: 'absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4' },
+                    e('div', { className: 'bg-white w-full max-w-sm p-5 rounded-2xl shadow-xl space-y-3 border border-gray-200' },
+                        e('h3', { className: 'text-sm font-bold text-gray-800 flex items-center gap-1.5' }, '🧹 Limpar Histórico Anual'),
+                        e('p', { className: 'text-xs text-gray-600' }, 'Digite o ano que deseja apagar completamente do seu histórico:'),
+                        e('form', { onSubmit: confirmarLimpezaAno, className: 'space-y-3 pt-1' },
+                            e('input', {
+                                type: 'number',
+                                placeholder: 'Ex: 2026',
+                                value: anoParaLimpar,
+                                onChange: (ev) => setAnoParaLimpar(ev.target.value),
+                                className: 'w-full p-2.5 border rounded-lg text-sm bg-white outline-none focus:border-rose-500 text-center font-bold tracking-widest',
+                                required: true,
+                                min: '2000',
+                                max: '2100'
+                            }),
+                            e('div', { className: 'flex gap-2 pt-2' },
+                                e('button', { 
+                                    type: 'button', 
+                                    onClick: () => setExibirModalLimpar(false), 
+                                    className: 'flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg text-xs font-semibold hover:bg-gray-300 transition' 
+                                }, 'Cancelar'),
+                                e('button', { 
+                                    type: 'submit', 
+                                    className: 'flex-1 bg-rose-600 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-rose-700 transition shadow-sm flex items-center justify-center gap-1.5' 
+                                }, '🗑️ Apagar Ano')
+                            )
                         )
                     )
                 ),
