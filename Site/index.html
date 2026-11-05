@@ -692,7 +692,7 @@
                     abaAtiva === 'forecast' && e('div', { className: 'space-y-4' },
                         e('h3', { className: 'text-sm font-bold text-gray-700 flex items-center gap-1.5' }, '📅 Forecast Anual', `(${anoVigente})`),
                         
-                        // BLOCO: Gráfico Compacto com Porcentagem de Saldo
+                        // BLOCO: Gráfico Compacto com Badges Limpas no Eixo X
                         (() => {
                             const mesesGrafico = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
                             
@@ -703,20 +703,20 @@
                                 const desp = itensMes.filter(i => i.tipo === 'despesa').reduce((a, b) => a + Number(b.valor), 0);
                                 
                                 // Cálculo da Porcentagem do Saldo
-                                let percentualStr = '0%';
-                                let corPercentual = 'text-gray-400';
+                                let percentualStr = '';
+                                let isPositivo = true;
                                 
                                 if (rec > 0) {
                                     const saldo = rec - desp;
                                     const percentual = (saldo / rec) * 100;
                                     percentualStr = `${percentual > 0 ? '+' : ''}${percentual.toFixed(0)}%`;
-                                    corPercentual = percentual >= 0 ? 'text-emerald-600' : 'text-rose-600';
+                                    isPositivo = percentual >= 0;
                                 } else if (desp > 0) {
                                     percentualStr = '-100%';
-                                    corPercentual = 'text-rose-600';
+                                    isPositivo = false;
                                 }
 
-                                return { mesStr: mesNum, rec, desp, percentualStr, corPercentual };
+                                return { mesStr: mesNum, rec, desp, percentualStr, isPositivo };
                             });
 
                             const maxGrafico = Math.max(...dadosGrafico.flatMap(d => [d.rec, d.desp]), 1);
@@ -728,22 +728,19 @@
                                     e('span', { className: 'text-[9px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium' }, `Teto: ${formatarMoedaCompacta(maxGrafico)}`)
                                 ),
                                 
-                                e('div', { className: 'flex items-stretch gap-1 pt-1' },
-                                    e('div', { className: 'flex flex-col justify-between text-[9px] text-gray-400 text-right pr-1 pb-5 h-28 select-none shrink-0 font-medium' },
+                                e('div', { className: 'flex items-stretch gap-1.5 pt-1' },
+                                    // Eixo Y (Valores) ajustado para considerar o novo espaço do eixo X
+                                    e('div', { className: 'flex flex-col justify-between text-[9px] text-gray-400 text-right pr-1 pb-9 h-32 select-none shrink-0 font-medium' },
                                         e('span', null, formatarMoedaCompacta(maxGrafico)),
                                         e('span', null, formatarMoedaCompacta(meioGrafico)),
                                         e('span', null, 'R$ 0')
                                     ),
-                                    e('div', { className: 'flex-1 flex items-end justify-between h-28 border-b border-l border-gray-200 pb-1 px-0.5 relative' },
-                                        dadosGrafico.map(d => 
-                                            e('div', { key: d.mesStr, className: 'flex flex-col items-center flex-1 mx-[1px] relative h-full justify-end' },
-                                                // Rótulo Percentual Flutuante
-                                                (d.rec > 0 || d.desp > 0) && e('div', { 
-                                                    className: `absolute -top-3 text-[8px] font-bold ${d.corPercentual} tracking-tighter`,
-                                                    title: `Saldo do Mês ${d.mesStr}`
-                                                }, d.percentualStr),
-                                                
-                                                e('div', { className: 'flex items-end w-full justify-center space-x-[1px] h-full mt-2' },
+                                    // Área principal do Gráfico e Eixo X
+                                    e('div', { className: 'flex-1 flex flex-col' },
+                                        // Espaço das Barras
+                                        e('div', { className: 'flex items-end justify-between h-24 border-b border-l border-gray-200 px-0.5' },
+                                            dadosGrafico.map(d => 
+                                                e('div', { key: `bar-${d.mesStr}`, className: 'flex items-end w-full justify-center space-x-[1px] h-full mx-[1px]' },
                                                     e('div', { 
                                                         className: 'bg-emerald-500 w-1.5 md:w-2.5 rounded-t-sm opacity-90 transition hover:opacity-100', 
                                                         style: { height: `${(d.rec / maxGrafico) * 100}%` },
@@ -754,8 +751,18 @@
                                                         style: { height: `${(d.desp / maxGrafico) * 100}%` },
                                                         title: `Despesas: ${formatarMoeda(d.desp)}` 
                                                     })
-                                                ),
-                                                e('span', { className: 'text-[9px] mt-1 text-gray-500 font-bold' }, d.mesStr)
+                                                )
+                                            )
+                                        ),
+                                        // Eixo X (Meses + Badges de Porcentagem)
+                                        e('div', { className: 'flex items-start justify-between h-8 pt-1 px-0.5' },
+                                            dadosGrafico.map(d => 
+                                                e('div', { key: `label-${d.mesStr}`, className: 'flex flex-col items-center flex-1 mx-[1px]' },
+                                                    e('span', { className: 'text-[9px] text-gray-500 font-bold leading-none' }, d.mesStr),
+                                                    d.percentualStr && e('span', { 
+                                                        className: `text-[7px] px-1 py-[1px] rounded mt-0.5 font-bold ${d.isPositivo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`
+                                                    }, d.percentualStr)
+                                                )
                                             )
                                         )
                                     )
@@ -786,9 +793,23 @@
                                 const rec = itensMes.filter(i => i.tipo === 'receita').reduce((a, b) => a + Number(b.valor), 0);
                                 const desp = itensMes.filter(i => i.tipo === 'despesa').reduce((a, b) => a + Number(b.valor), 0);
                                 const saldoMes = rec - desp;
+                                
+                                let percentualStr = '';
+                                let isPositivo = true;
+                                if (rec > 0) {
+                                    const percentual = (saldoMes / rec) * 100;
+                                    percentualStr = `${percentual > 0 ? '+' : ''}${percentual.toFixed(0)}%`;
+                                    isPositivo = percentual >= 0;
+                                } else if (desp > 0) {
+                                    percentualStr = '-100%';
+                                    isPositivo = false;
+                                }
 
                                 return e('div', { key: chaveMes, className: `p-3 rounded-xl border flex justify-between items-center text-sm transition ${chaveMes === mesAtual ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'bg-white hover:bg-gray-50'}` },
-                                    e('div', null, e('span', { className: 'font-semibold text-gray-700' }, chaveMes)),
+                                    e('div', { className: 'flex items-center gap-2' }, 
+                                        e('span', { className: 'font-semibold text-gray-700' }, chaveMes),
+                                        percentualStr && e('span', { className: `text-[10px] px-1.5 py-0.5 rounded font-bold ${isPositivo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}` }, percentualStr)
+                                    ),
                                     e('div', { className: 'text-right' },
                                         e('p', { className: `font-bold ${saldoMes >= 0 ? 'text-emerald-600' : 'text-rose-600'}` }, formatarMoeda(saldoMes)),
                                         e('span', { className: 'text-[10px] text-gray-400 font-medium' }, `Rec: ${formatarMoeda(rec)} | Desp: ${formatarMoeda(desp)}`)
