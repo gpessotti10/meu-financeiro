@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Financeiro</title>
-    <!-- Logo icone Iphone -->
-    <link rel="icon" type="image/png" href="Logo.png">
-    <link rel="apple-touch-icon" href="Logo.png">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React e ReactDOM -->
@@ -14,7 +11,10 @@
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js" crossorigin></script>
     <!-- SheetJS (xlsx) para manipulação de arquivos Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+    
+    <!-- Ícone PWA Personalizado -->
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
 </head>
 <body class="bg-gray-50 text-gray-800">
     <div id="root"></div>
@@ -45,6 +45,7 @@
             const [abaAtiva, setAbaAtiva] = React.useState('dashboard');
             const [termoBusca, setTermoBusca] = React.useState('');
             const [filtroStatus, setFiltroStatus] = React.useState('todos');
+            const [itemParaExcluir, setItemParaExcluir] = React.useState(null);
             
             const [lancamentos, setLancamentos] = React.useState(() => {
                 try {
@@ -180,10 +181,34 @@
                 }));
             };
 
-            const excluirLancamento = (id) => {
-                if (confirm('Deseja realmente excluir este lançamento?')) {
-                    setLancamentos(lancamentos.filter(item => item.id !== id));
+            const iniciarExclusao = (item) => {
+                if (item.recorrente) {
+                    setItemParaExcluir(item);
+                } else {
+                    if (confirm('Deseja realmente excluir este lançamento?')) {
+                        setLancamentos(lancamentos.filter(i => i.id !== item.id));
+                    }
                 }
+            };
+
+            const confirmarExclusao = (modoExclusao) => {
+                if (!itemParaExcluir) return;
+
+                const desc = itemParaExcluir.descricao;
+                const dataReferencia = itemParaExcluir.data;
+
+                if (modoExclusao === 'todos') {
+                    setLancamentos(lancamentos.filter(item => !(item.recorrente && item.descricao === desc)));
+                    alert('Toda a série recorrente foi excluída!');
+                } else if (modoExclusao === 'futuros') {
+                    setLancamentos(lancamentos.filter(item => !(item.recorrente && item.descricao === desc && item.data >= dataReferencia)));
+                    alert('Lançamentos excluídos deste mês em diante!');
+                } else {
+                    setLancamentos(lancamentos.filter(item => item.id !== itemParaExcluir.id));
+                    alert('Lançamento excluído com sucesso!');
+                }
+
+                setItemParaExcluir(null);
             };
 
             const duplicarRecorrenciaProximoAno = () => {
@@ -653,7 +678,7 @@
                                             ),
                                             e('td', { className: 'p-2.5 text-center flex justify-center gap-1' },
                                                 e('button', { onClick: () => iniciarEdicao(item), className: 'text-blue-500 hover:text-blue-700 p-1 rounded transition', title: 'Editar' }, '✏️'),
-                                                e('button', { onClick: () => excluirLancamento(item.id), className: 'text-rose-500 hover:text-rose-700 p-1 rounded transition', title: 'Excluir' }, '🗑️')
+                                                e('button', { onClick: () => iniciarExclusao(item), className: 'text-rose-500 hover:text-rose-700 p-1 rounded transition', title: 'Excluir' }, '🗑️')
                                             )
                                         )
                                     ),
@@ -667,7 +692,7 @@
                     abaAtiva === 'forecast' && e('div', { className: 'space-y-4' },
                         e('h3', { className: 'text-sm font-bold text-gray-700 flex items-center gap-1.5' }, '📅 Forecast Anual', `(${anoVigente})`),
                         
-                        // BLOCO: Gráfico Compacto, Simplificado e Enquadrado na Tela
+                        // BLOCO: Gráfico Compacto com Porcentagem de Saldo
                         (() => {
                             const mesesGrafico = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
                             
@@ -676,7 +701,22 @@
                                 const itensMes = lancamentos.filter(i => i.data && i.data.startsWith(chaveMes));
                                 const rec = itensMes.filter(i => i.tipo === 'receita').reduce((a, b) => a + Number(b.valor), 0);
                                 const desp = itensMes.filter(i => i.tipo === 'despesa').reduce((a, b) => a + Number(b.valor), 0);
-                                return { mesStr: mesNum, rec, desp };
+                                
+                                // Cálculo da Porcentagem do Saldo
+                                let percentualStr = '0%';
+                                let corPercentual = 'text-gray-400';
+                                
+                                if (rec > 0) {
+                                    const saldo = rec - desp;
+                                    const percentual = (saldo / rec) * 100;
+                                    percentualStr = `${percentual > 0 ? '+' : ''}${percentual.toFixed(0)}%`;
+                                    corPercentual = percentual >= 0 ? 'text-emerald-600' : 'text-rose-600';
+                                } else if (desp > 0) {
+                                    percentualStr = '-100%';
+                                    corPercentual = 'text-rose-600';
+                                }
+
+                                return { mesStr: mesNum, rec, desp, percentualStr, corPercentual };
                             });
 
                             const maxGrafico = Math.max(...dadosGrafico.flatMap(d => [d.rec, d.desp]), 1);
@@ -688,26 +728,31 @@
                                     e('span', { className: 'text-[9px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium' }, `Teto: ${formatarMoedaCompacta(maxGrafico)}`)
                                 ),
                                 
-                                // Container do Gráfico enquadrado perfeitamente sem barra de rolagem
-                                e('div', { className: 'flex items-stretch gap-1.5 pt-1' },
-                                    e('div', { className: 'flex flex-col justify-between text-[9px] text-gray-400 text-right pr-1 pb-5 h-32 select-none shrink-0 font-medium' },
+                                e('div', { className: 'flex items-stretch gap-1 pt-1' },
+                                    e('div', { className: 'flex flex-col justify-between text-[9px] text-gray-400 text-right pr-1 pb-5 h-28 select-none shrink-0 font-medium' },
                                         e('span', null, formatarMoedaCompacta(maxGrafico)),
                                         e('span', null, formatarMoedaCompacta(meioGrafico)),
                                         e('span', null, 'R$ 0')
                                     ),
-                                    e('div', { className: 'flex-1 flex items-end justify-between h-32 border-b border-l border-gray-200 pb-1 px-1' },
+                                    e('div', { className: 'flex-1 flex items-end justify-between h-28 border-b border-l border-gray-200 pb-1 px-0.5 relative' },
                                         dadosGrafico.map(d => 
-                                            e('div', { key: d.mesStr, className: 'flex flex-col items-center flex-1 mx-[1px]' },
-                                                e('div', { className: 'flex items-end w-full justify-center space-x-[1px] h-24' },
+                                            e('div', { key: d.mesStr, className: 'flex flex-col items-center flex-1 mx-[1px] relative h-full justify-end' },
+                                                // Rótulo Percentual Flutuante
+                                                (d.rec > 0 || d.desp > 0) && e('div', { 
+                                                    className: `absolute -top-3 text-[8px] font-bold ${d.corPercentual} tracking-tighter`,
+                                                    title: `Saldo do Mês ${d.mesStr}`
+                                                }, d.percentualStr),
+                                                
+                                                e('div', { className: 'flex items-end w-full justify-center space-x-[1px] h-full mt-2' },
                                                     e('div', { 
                                                         className: 'bg-emerald-500 w-1.5 md:w-2.5 rounded-t-sm opacity-90 transition hover:opacity-100', 
                                                         style: { height: `${(d.rec / maxGrafico) * 100}%` },
-                                                        title: `Mês ${d.mesStr} - Receitas: ${formatarMoeda(d.rec)}` 
+                                                        title: `Receitas: ${formatarMoeda(d.rec)}` 
                                                     }),
                                                     e('div', { 
                                                         className: 'bg-rose-500 w-1.5 md:w-2.5 rounded-t-sm opacity-90 transition hover:opacity-100', 
                                                         style: { height: `${(d.desp / maxGrafico) * 100}%` },
-                                                        title: `Mês ${d.mesStr} - Despesas: ${formatarMoeda(d.desp)}` 
+                                                        title: `Despesas: ${formatarMoeda(d.desp)}` 
                                                     })
                                                 ),
                                                 e('span', { className: 'text-[9px] mt-1 text-gray-500 font-bold' }, d.mesStr)
@@ -827,6 +872,34 @@
                                     className: 'w-full bg-gray-200 text-gray-700 py-2.5 rounded-lg text-xs font-semibold hover:bg-gray-300 transition' 
                                 }, 'Cancelar')
                             )
+                        )
+                    )
+                ),
+                itemParaExcluir && e('div', { className: 'absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4' },
+                    e('div', { className: 'bg-white w-full max-w-sm p-5 rounded-2xl shadow-xl space-y-3 border border-gray-200' },
+                        e('h3', { className: 'text-sm font-bold text-gray-800 flex items-center gap-1.5' }, '🗑️ Excluir Lançamento Recorrente'),
+                        e('p', { className: 'text-xs text-gray-600' }, `Como você deseja excluir "${itemParaExcluir.descricao}"?`),
+                        e('div', { className: 'space-y-2 pt-1' },
+                            e('button', { 
+                                type: 'button', 
+                                onClick: () => confirmarExclusao('futuros'), 
+                                className: 'w-full bg-amber-600 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-amber-700 transition shadow-sm flex items-center justify-center gap-1.5' 
+                            }, '📈 Excluir deste mês em diante'),
+                            e('button', { 
+                                type: 'button', 
+                                onClick: () => confirmarExclusao('todos'), 
+                                className: 'w-full bg-rose-600 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-rose-700 transition shadow-sm flex items-center justify-center gap-1.5' 
+                            }, '🔄 Excluir toda a série recorrente'),
+                            e('button', { 
+                                type: 'button', 
+                                onClick: () => confirmarExclusao('este'), 
+                                className: 'w-full bg-slate-700 text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-800 transition shadow-sm flex items-center justify-center gap-1.5' 
+                            }, '🗑️ Excluir apenas este mês'),
+                            e('button', { 
+                                type: 'button', 
+                                onClick: () => setItemParaExcluir(null), 
+                                className: 'w-full bg-gray-200 text-gray-700 py-2.5 rounded-lg text-xs font-semibold hover:bg-gray-300 transition' 
+                            }, 'Cancelar')
                         )
                     )
                 ),
