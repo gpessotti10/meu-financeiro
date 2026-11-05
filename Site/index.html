@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Financeiro</title>
+    <title>Minhas Finanças</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React e ReactDOM -->
@@ -13,8 +13,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Ícone PWA e Aba do Navegador -->
-    <link rel="icon" type="image/jpeg" href="logo.jpg">
-    <link rel="apple-touch-icon" href="logo.jpg">
+    <link rel="icon" type="image/jpeg" href="Logo.jpg">
+    <link rel="apple-touch-icon" href="Logo.jpg">
 </head>
 <body class="bg-gray-50 text-gray-800">
     <div id="root"></div>
@@ -508,7 +508,7 @@
                         
                         e('div', { className: 'w-28 h-28 mx-auto rounded-[2rem] overflow-hidden shadow-inner bg-white flex items-center justify-center' },
                             e('img', { 
-                                src: 'logo.jpg', 
+                                src: 'Logo.jpg', 
                                 alt: 'Logo Minhas Finanças', 
                                 className: 'w-full h-full object-cover p-1',
                                 onError: (ev) => { 
@@ -518,7 +518,7 @@
                             })
                         ),
 
-                        e('h2', { className: 'text-xl font-bold text-blue-600' }, 'Meu Financeiro'),
+                        e('h2', { className: 'text-xl font-bold text-blue-600' }, 'Minhas Finanças'),
                         e('p', { className: 'text-xs text-gray-500' }, !senhaSalva ? 'Defina uma senha de acesso:' : 'Digite sua senha para desbloquear:'),
                         e('form', { onSubmit: handleAutenticacao, className: 'space-y-3' },
                             e('input', {
@@ -544,7 +544,7 @@
                     e('div', { className: 'flex justify-between items-center mb-1' },
                         e('div', { className: 'flex items-center gap-2' },
                             e('span', { className: 'text-lg' }, '📊'),
-                            e('h1', { className: 'text-lg font-bold' }, 'Meu Financeiro')
+                            e('h1', { className: 'text-lg font-bold' }, 'Minhas Finanças')
                         ),
                         e('div', { className: 'flex items-center gap-2' },
                             e('input', {
