@@ -41,7 +41,13 @@
             const [senhaDigitada, setSenhaDigitada] = React.useState('');
             const [autenticado, setAutenticado] = React.useState(false);
 
-            const [mesAtual, setMesAtual] = React.useState(new Date().toISOString().slice(0, 7));
+            const [mesAtual, setMesAtual] = React.useState(() => {
+                try {
+                    const salvo = localStorage.getItem('meu_financeiro_mes_atual');
+                    if (salvo && /^\d{4}-\d{2}$/.test(salvo)) return salvo;
+                } catch (err) {}
+                return new Date().toISOString().slice(0, 7);
+            });
             const [abaAtiva, setAbaAtiva] = React.useState('dashboard');
             const [termoBusca, setTermoBusca] = React.useState('');
             const [filtroStatus, setFiltroStatus] = React.useState('todos');
@@ -66,6 +72,12 @@
             React.useEffect(() => {
                 localStorage.setItem('meu_financeiro_lancamentos', JSON.stringify(lancamentos));
             }, [lancamentos]);
+
+            React.useEffect(() => {
+                try {
+                    localStorage.setItem('meu_financeiro_mes_atual', mesAtual);
+                } catch (err) {}
+            }, [mesAtual]);
 
             const formatarMoeda = (val) => {
                 return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -391,6 +403,13 @@
             const [novaCategoria, setNovaCategoria] = React.useState('Moradia');
             const [novaData, setNovaData] = React.useState(mesAtual + '-01');
             const [novoRecorrente, setNovoRecorrente] = React.useState(false);
+
+            React.useEffect(() => {
+                setNovaData(prev => {
+                    const dia = (prev && prev.split('-')[2]) ? prev.split('-')[2] : '01';
+                    return `${mesAtual}-${dia}`;
+                });
+            }, [mesAtual]);
 
             const adicionarLancamento = (ev) => {
                 ev.preventDefault();
