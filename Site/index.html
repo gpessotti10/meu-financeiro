@@ -216,11 +216,9 @@
                 if (criterioOrdenacao === 'data') {
                     const dataA = a.data || '';
                     const dataB = b.data || '';
-                    if (dataA !== dataB) {
-                        return direcaoOrdenacao === 'asc'
-                            ? dataA.localeCompare(dataB)
-                            : dataB.localeCompare(dataA);
-                    }
+                    return direcaoOrdenacao === 'asc'
+                        ? dataA.localeCompare(dataB)
+                        : dataB.localeCompare(dataA);
                 }
                 const valA = a.tipo === 'receita' ? Number(a.valor) : -Number(a.valor);
                 const valB = b.tipo === 'receita' ? Number(b.valor) : -Number(b.valor);
